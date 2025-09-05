@@ -10,7 +10,7 @@ const FeatureItem = ({ title, videoSrc }: FeatureItemProps) => {
     <div className={styles.featureItem}>
       <video className={styles.featureImage} autoPlay loop muted playsInline>
         <source src={videoSrc} type="video/mp4" />
-        <h4 className={styles.featureTitle}>{title}</h4>
+        <h3 className={styles.featureTitle}>{title}</h3>
       </video>
     </div>
   );
