@@ -1,5 +1,4 @@
-import { ChangeEvent, useEffect, useState } from 'react';
-
+import { ChangeEvent, useCallback, useEffect, useState } from 'react';
 import { gifAPIService } from '../../../apis/gifAPIService';
 import { GifImageModel } from '../../../models/image/gifImage';
 
@@ -14,6 +13,10 @@ export const SEARCH_STATUS = {
 } as const;
 
 export type SearchStatus = typeof SEARCH_STATUS[keyof typeof SEARCH_STATUS];
+
+const CACHE_NAME = 'giphy-trending-cache';
+const CACHE_KEY = 'trending';
+const CACHE_TTL = 10 * 60 * 1000;
 
 const useGifSearch = () => {
   const [status, setStatus] = useState<SearchStatus>(SEARCH_STATUS.BEFORE_SEARCH);
@@ -33,14 +36,13 @@ const useGifSearch = () => {
     setErrorMessage(null);
   };
 
-  const handleError = (error: unknown) => {
+  const handleError = useCallback((error: unknown) => {
     setStatus(SEARCH_STATUS.ERROR);
     setErrorMessage(error instanceof Error ? error.message : 'An unknown error occurred');
-  };
+  }, []);
 
   const searchByKeyword = async (): Promise<void> => {
     resetSearch();
-
     try {
       const gifs = await gifAPIService.searchByKeyword(searchKeyword, DEFAULT_PAGE_INDEX);
 
@@ -58,11 +60,9 @@ const useGifSearch = () => {
 
   const loadMore = async (): Promise<void> => {
     const nextPageIndex = currentPageIndex + 1;
-
     try {
-      const newGitList = await gifAPIService.searchByKeyword(searchKeyword, nextPageIndex);
-
-      setGifList((prevGifList) => [...prevGifList, ...newGitList]);
+      const newGifList = await gifAPIService.searchByKeyword(searchKeyword, nextPageIndex);
+      setGifList((prevGifList) => [...prevGifList, ...newGifList]);
       setCurrentPageIndex(nextPageIndex);
     } catch (error) {
       handleError(error);
@@ -70,19 +70,41 @@ const useGifSearch = () => {
   };
 
   useEffect(() => {
+    let isMounted = true;
+
     const fetchTrending = async () => {
       if (status !== SEARCH_STATUS.BEFORE_SEARCH) return;
 
       try {
+        const cache = await caches.open(CACHE_NAME);
+        const cachedResponse = await cache.match(CACHE_KEY);
+
+        if (cachedResponse) {
+          const { data, cachedAt } = await cachedResponse.json();
+          if (Date.now() - cachedAt < CACHE_TTL) {
+            if (isMounted) setGifList(data);
+            return;
+          }
+        }
+
         const gifs = await gifAPIService.getTrending();
-        setGifList(gifs);
+        const wrapped = new Response(JSON.stringify({ data: gifs, cachedAt: Date.now() }), {
+          headers: { 'Content-Type': 'application/json' }
+        });
+        await cache.put(CACHE_KEY, wrapped);
+
+        if (isMounted) setGifList(gifs);
       } catch (error) {
-        handleError(error);
+        if (isMounted) handleError(error);
       }
     };
 
     fetchTrending();
-  }, []);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [status, handleError]);
 
   return {
     status,
