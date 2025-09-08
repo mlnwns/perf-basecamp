@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 export type MousePosition = Partial<MouseEvent>;
 
@@ -11,25 +11,36 @@ const useMousePosition = () => {
     offsetX: 0,
     offsetY: 0
   });
+  const position = useRef(mousePosition);
 
   const updateMousePosition = (e: MouseEvent) => {
     const { clientX, clientY, pageX, pageY, offsetX, offsetY } = e;
 
-    setMousePosition({
+    position.current = {
       clientX,
       clientY,
       pageX,
       pageY,
       offsetX,
       offsetY
-    });
+    };
   };
 
   useEffect(() => {
     window.addEventListener('mousemove', updateMousePosition);
 
+    let animationFrameId: number;
+
+    const animate = () => {
+      setMousePosition(position.current);
+      animationFrameId = requestAnimationFrame(animate);
+    };
+
+    animate();
+
     return () => {
       window.removeEventListener('mousemove', updateMousePosition);
+      cancelAnimationFrame(animationFrameId);
     };
   }, []);
 
