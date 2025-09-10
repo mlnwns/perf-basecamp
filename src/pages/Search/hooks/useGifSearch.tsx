@@ -14,10 +14,6 @@ export const SEARCH_STATUS = {
 
 export type SearchStatus = typeof SEARCH_STATUS[keyof typeof SEARCH_STATUS];
 
-const CACHE_NAME = 'giphy-trending-cache';
-const CACHE_KEY = 'trending';
-const CACHE_TTL = 10 * 60 * 1000;
-
 const useGifSearch = () => {
   const [status, setStatus] = useState<SearchStatus>(SEARCH_STATUS.BEFORE_SEARCH);
   const [currentPageIndex, setCurrentPageIndex] = useState(DEFAULT_PAGE_INDEX);
@@ -76,26 +72,14 @@ const useGifSearch = () => {
       if (status !== SEARCH_STATUS.BEFORE_SEARCH) return;
 
       try {
-        const cache = await caches.open(CACHE_NAME);
-        const cachedResponse = await cache.match(CACHE_KEY);
-
-        if (cachedResponse) {
-          const { data, cachedAt } = await cachedResponse.json();
-          if (Date.now() - cachedAt < CACHE_TTL) {
-            if (isMounted) setGifList(data);
-            return;
-          }
-        }
-
         const gifs = await gifAPIService.getTrending();
-        const wrapped = new Response(JSON.stringify({ data: gifs, cachedAt: Date.now() }), {
-          headers: { 'Content-Type': 'application/json' }
-        });
-        await cache.put(CACHE_KEY, wrapped);
-
-        if (isMounted) setGifList(gifs);
+        if (isMounted) {
+          setGifList(gifs);
+        }
       } catch (error) {
-        if (isMounted) handleError(error);
+        if (isMounted) {
+          handleError(error);
+        }
       }
     };
 
