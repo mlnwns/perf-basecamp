@@ -11,36 +11,44 @@ const useMousePosition = () => {
     offsetX: 0,
     offsetY: 0
   });
-  const position = useRef(mousePosition);
 
-  const updateMousePosition = (e: MouseEvent) => {
-    const { clientX, clientY, pageX, pageY, offsetX, offsetY } = e;
-
-    position.current = {
-      clientX,
-      clientY,
-      pageX,
-      pageY,
-      offsetX,
-      offsetY
-    };
-  };
+  const frameRef = useRef<number>();
+  const latestEventRef = useRef<MouseEvent>();
 
   useEffect(() => {
-    window.addEventListener('mousemove', updateMousePosition);
+    const update = () => {
+      if (latestEventRef.current) {
+        const { clientX, clientY, pageX, pageY, offsetX, offsetY } = latestEventRef.current;
 
-    let animationFrameId: number;
+        setMousePosition({
+          clientX,
+          clientY,
+          pageX,
+          pageY,
+          offsetX,
+          offsetY
+        });
+      }
 
-    const animate = () => {
-      setMousePosition(position.current);
-      animationFrameId = requestAnimationFrame(animate);
+      frameRef.current = undefined;
     };
 
-    animate();
+    const onMouseMove = (e: MouseEvent) => {
+      latestEventRef.current = e;
+
+      if (!frameRef.current) {
+        frameRef.current = requestAnimationFrame(update);
+      }
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
 
     return () => {
-      window.removeEventListener('mousemove', updateMousePosition);
-      cancelAnimationFrame(animationFrameId);
+      window.removeEventListener('mousemove', onMouseMove);
+
+      if (frameRef.current) {
+        cancelAnimationFrame(frameRef.current);
+      }
     };
   }, []);
 
