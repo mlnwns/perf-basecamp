@@ -3,11 +3,11 @@ import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 
 import NavBar from './components/NavBar/NavBar';
 import Footer from './components/Footer/Footer';
-import Home from './pages/Home/Home';
 
 import './App.css';
 
 const Search = lazy(() => import('./pages/Search/Search'));
+const Home = lazy(() => import('./pages/Home/Home'));
 
 const App = () => {
   return (
@@ -18,8 +18,8 @@ const App = () => {
           <Route path="/" element={<Home />} />
           <Route path="/search" element={<Search />} />
         </Routes>
+        <Footer />
       </Suspense>
-      <Footer />
     </Router>
   );
 };
